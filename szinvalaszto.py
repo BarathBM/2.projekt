@@ -93,10 +93,10 @@ class ColorGame:
         words = []
         colors_display = []
         for _ in range(num_words):
-            word = random.choice(list(colors.items()))
-            color  = random.choice(list(colors.items())) # Véletlenszerű szó és szín pár
+            word = random.choice(list(colors.keys()))  # Véletlenszerű szó
+            color = random.choice(list(colors.keys()))  # Véletlenszerű szín
             words.append(word)
-            colors_display.append(color)
+            colors_display.append(colors[color])
         return words, colors_display
 
     def check_answer(self, event):
@@ -107,8 +107,10 @@ class ColorGame:
         user_input = self.entry.get().strip().lower()
 
         # Ellenőrizzük, hogy a válasz helyes-e
-        expected_word = self.words[self.correct_answers]  # A helyes válasz a szín neve magyarul
-        if user_input == expected_word:
+        expected_color_en = self.colors_display[self.correct_answers]  # A helyes válasz angol neve
+        expected_color_hu = list(colors.keys())[list(colors.values()).index(expected_color_en)]  # Magyar megfelelő
+
+        if user_input == expected_color_en or user_input == expected_color_hu:
             self.correct_answers += 1
             self.user_input.append(user_input)
             elapsed_time = round(time.time() - self.current_time, 2)
