@@ -2,118 +2,137 @@ import tkinter as tk
 import random
 import time
 
-# Globális változók
-colors = ['piros', 'kék', 'zöld', 'sárga', 'narancs', 'lila', 'rózsaszín']
-color_dict = {
+# Elérhető színek és azok nevei
+colors = {
     'piros': 'red',
-    'kék': 'blue',
     'zöld': 'green',
+    'kék': 'blue',
     'sárga': 'yellow',
     'narancs': 'orange',
+    'rózsaszín': 'pink',
     'lila': 'purple',
-    'rózsaszín': 'pink'
+    'fehér': 'white',
+    'fekete': 'black'
 }
 
-best_time = float('inf')
-elapsed_time = 0
-start_time = 0
-target_word = ''
-target_color = ''
-max_colors = 1  # Alapértelmezett választási szám
+class ColorGame:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Színválasztó Játék")
 
-# GUI elemek
-def create_gui():
-    global time_label, best_time_label, feedback_label, word_label, entry, dropdown, dropdown_menu, root
+        self.best_time = float('inf')  # A legjobb idő alapértelmezetten végtelen
+        self.current_time = 0
+        self.is_playing = False
+        self.correct_answers = 0  # Helyes válaszok száma
+        self.num_words = 1  # Alapértelmezetten 1 szó
+        self.words = []  # Tárolja a véletlenszerűen választott szavakat
+        self.colors_display = []  # Tárolja a megfelelő színeket
+        self.user_input = []  # Tárolja a felhasználó válaszait
+
+        # Különböző label-ek
+        self.label_words = tk.Label(root, font=('Arial', 30), width=20, height=2)
+        self.label_words.pack(pady=20)
+
+        self.entry = tk.Entry(root, font=('Arial', 20))
+        self.entry.pack(pady=10)
+        self.entry.bind('<Return>', self.check_answer)  # Enter gombnyomáskor ellenőrzés
+
+        self.time_label = tk.Label(root, text="Idő: 0.00", font=('Arial', 15))
+        self.time_label.pack()
+
+        self.best_time_label = tk.Label(root, text="Legjobb idő: N/A", font=('Arial', 15))
+        self.best_time_label.pack()
+
+        self.feedback_label = tk.Label(root, text="Visszajelzés: ", font=('Arial', 15))
+        self.feedback_label.pack()
+
+        # Legördülő menü a színek számának beállításához
+        self.dropdown_var = tk.StringVar(root)
+        self.dropdown_var.set("1")  # Alapértelmezetten 1 szó
+        self.dropdown = tk.OptionMenu(root, self.dropdown_var, "1", "2", "3", "4", command=self.update_num_words)
+        self.dropdown.pack(pady=10)
+
+        # Kezdő gomb
+        self.start_button = tk.Button(root, text="Játék indítása", font=('Arial', 15), command=self.start_game)
+        self.start_button.pack(pady=20)
+
+    def update_num_words(self, value):
+        # A legördülő menüben kiválasztott számot eltároljuk
+        self.num_words = int(value)
+
+    def start_game(self):
+        # Játék kezdése
+        self.is_playing = True
+        self.entry.delete(0, tk.END)  # Töröljük az eddigi bejegyzéseket
+        self.current_time = time.time()
+        self.correct_answers = 0  # Helyes válaszok száma reset
+        self.words.clear()
+        self.colors_display.clear()
+        self.user_input.clear()
+
+        self.time_label.config(text="Idő: 0.00")
+        self.feedback_label.config(text="Visszajelzés: ")
+
+        # Véletlenszerű színek és szavak generálása
+        self.words, self.colors_display = self.generate_random_words(self.num_words)
+
+        # Az első szót és színt megjelenítjük
+        self.label_words.config(text=self.words[self.correct_answers], fg=self.colors_display[self.correct_answers])
+
+        # Indítjuk a időmérőt
+        self.update_time()
+
+    def update_time(self):
+        if self.is_playing:
+            elapsed_time = round(time.time() - self.current_time, 2)
+            self.time_label.config(text=f"Idő: {elapsed_time}")
+            self.root.after(50, self.update_time)  # Minden 50ms-ban frissítjük az időt
+
+    def generate_random_words(self, num_words):
+        # Véletlenszerű szó és szín kiválasztása
+        words = []
+        colors_display = []
+        for _ in range(num_words):
+            word = random.choice(list(colors.keys()))  # Véletlenszerű szó
+            color = random.choice(list(colors.values()))  # Véletlenszerű szín (a szín nem egyezhet meg a szóval!)
+            words.append(word)
+            colors_display.append(color)
+        return words, colors_display
+
+    def check_answer(self, event):
+        # Ellenőrizzük a felhasználó válaszát
+        if not self.is_playing:
+            return
+
+        user_input = self.entry.get().strip().lower()
+
+        # Ellenőrizzük, hogy a válasz helyes-e
+        expected_word = self.words[self.correct_answers]
+        if user_input == expected_word:
+            self.correct_answers += 1
+            self.user_input.append(user_input)
+            elapsed_time = round(time.time() - self.current_time, 2)
+
+            # Ha minden szóra válaszolt a felhasználó
+            if self.correct_answers == self.num_words:
+                self.is_playing = False  # Játék vége
+                if elapsed_time < self.best_time:
+                    self.best_time = elapsed_time
+                    self.best_time_label.config(text=f"Legjobb idő: {self.best_time}s")
+                self.feedback_label.config(text=f"Játék vége! Helyes válaszok: {self.correct_answers}")
+                self.start_button.config(text="Új játék", command=self.start_game)
+                return  # Játék befejeződött
+
+            # Új szó következik
+            self.label_words.config(text=self.words[self.correct_answers], fg=self.colors_display[self.correct_answers])
+            self.feedback_label.config(text=f"Visszajelzés: Helyes válasz! ({self.correct_answers}/{self.num_words})")
+        else:
+            self.feedback_label.config(text="Visszajelzés: Hibás válasz!")
+
+        # Az idő frissítése minden válasz után
+        self.entry.delete(0, tk.END)
+
+if __name__ == "__main__":
     root = tk.Tk()
-    root.title("Színválasztó Játék")
-    
-    # Idő címkék
-    time_label = tk.Label(root, text="Eltelt idő: 0", font=("Arial", 16))
-    time_label.pack(pady=10)
-    
-    best_time_label = tk.Label(root, text="Legjobb idő: Nincs", font=("Arial", 16))
-    best_time_label.pack(pady=10)
-    
-    feedback_label = tk.Label(root, text="", font=("Arial", 16), fg="red")
-    feedback_label.pack(pady=10)
-    
-    word_label = tk.Label(root, text="", font=("Arial", 24), width=20)
-    word_label.pack(pady=10)
-    
-    entry = tk.Entry(root, font=("Arial", 16))
-    entry.pack(pady=10)
-    
-    entry.bind("<Return>", check_answer)
-    
-    dropdown_label = tk.Label(root, text="Hány szín jelenjen meg?", font=("Arial", 16))
-    dropdown_label.pack(pady=10)
-    
-    dropdown = tk.StringVar(root)
-    dropdown.set('1')  # Alapértelmezett érték
-    dropdown_menu = tk.OptionMenu(root, dropdown, '1', '2', '3', '4')
-    dropdown_menu.pack(pady=10)
-    
-    new_game_button = tk.Button(root, text="Új játék", command=new_game, font=("Arial", 16))
-    new_game_button.pack(pady=10)
-
-    # A dropdown menü változtatásának kezelése
-    dropdown.trace('w', update_max_colors)
-
-    # Automatikusan új játék kezdése az alkalmazás indításakor
-    new_game()
-
+    game = ColorGame(root)
     root.mainloop()
-
-# A dropdown menü figyelése és a max_colors frissítése
-def update_max_colors(*args):
-    global max_colors
-    max_colors = int(dropdown.get())  # Frissíti a max_colors értéket
-    new_game()  # Új játék indítása, hogy figyelembe vegye az új színválasztást
-
-def new_game():
-    global target_word, target_color, start_time, elapsed_time, max_colors
-    
-    # Véletlenszerű szín és szó beállítása
-    target_word = random.choice(colors)
-    
-    # Véletlenszerűen kiválasztunk annyi színt, amennyi a kiválasztott szám
-    possible_colors = random.sample(colors, max_colors)
-    
-    # A cél színe benne van a kiválasztott színek között
-    target_color = random.choice(possible_colors)
-    
-    # Véletlenszerű szín és szó beállítása
-    word_label.config(text=target_word, fg=color_dict[target_color])
-    
-    # Eltelt idő és visszajelzés nullázása
-    elapsed_time = 0
-    time_label.config(text="Eltelt idő: 0")
-    feedback_label.config(text="")
-    
-    # Induljon a számláló
-    start_time = time.time()
-
-def check_answer(event=None):
-    global best_time, elapsed_time
-    
-    user_input = entry.get().strip().lower()
-    
-    if user_input == target_color:
-        # Ha a válasz helyes
-        elapsed_time = time.time() - start_time
-        time_label.config(text=f"Eltelt idő: {elapsed_time:.2f} másodperc")
-        
-        # Frissítjük a legjobb időt
-        if elapsed_time < best_time:
-            best_time = elapsed_time
-            best_time_label.config(text=f"Legjobb idő: {best_time:.2f} másodperc")
-            
-        feedback_label.config(text="Helyes válasz!", fg="green")
-    else:
-        feedback_label.config(text="Hibás válasz, próbáld újra!", fg="red")
-    
-    entry.delete(0, tk.END)  # Törli az Entry tartalmát
-    new_game()  # Új kérdés generálása
-
-# Alkalmazás indítása
-create_gui()  # GUI inicializálása és indítása
